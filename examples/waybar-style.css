@@ -1,0 +1,23 @@
+#custom-keeptabs {
+  padding: 0 8px;
+  color: #717a84;
+}
+
+#custom-keeptabs.running {
+  color: #7fa3c9;
+}
+
+#custom-keeptabs.done {
+  color: #a3e39a;
+}
+
+#custom-keeptabs.waiting {
+  color: #ffa0a0;
+  animation: keeptabs-pulse 1s ease-in-out infinite;
+}
+
+@keyframes keeptabs-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}

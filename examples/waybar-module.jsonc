@@ -1,0 +1,8 @@
+// Add "custom/keeptabs" to modules-left/center/right in your bar config.
+"custom/keeptabs": {
+  "exec": "keeptabs-waybar",
+  "return-type": "json",
+  "tooltip": true,
+  "hide-empty-text": true,
+  "on-click": "keeptabs-pick"
+}
