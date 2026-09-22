@@ -1,15 +1,28 @@
+<p align="center">
+  <img
+    src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f916.svg"
+    width="auto" height="128" alt="logo" />
+</p>
 <h1 align="center">keeptabs</h1>
-
+<p align="center">
+  <a href="https://github.com/uhs-robert/keeptabs/stargazers"><img src="https://img.shields.io/github/stars/uhs-robert/keeptabs?colorA=192330&colorB=khaki&style=for-the-badge&cacheSeconds=4300"></a>
+  <a href="https://github.com/uhs-robert/keeptabs/issues"><img src="https://img.shields.io/github/issues/uhs-robert/keeptabs?colorA=192330&colorB=skyblue&style=for-the-badge&cacheSeconds=4300"></a>
+  <a href="https://github.com/uhs-robert/keeptabs/contributors"><img src="https://img.shields.io/github/contributors/uhs-robert/keeptabs?colorA=192330&colorB=8FD1C7&style=for-the-badge&cacheSeconds=4300"></a>
+  <a href="https://github.com/uhs-robert/keeptabs/network/members"><img src="https://img.shields.io/github/forks/uhs-robert/keeptabs?colorA=192330&colorB=C799FF&style=for-the-badge&cacheSeconds=4300"></a>
+</p>
 <p align="center">Keep tabs on your AI coding agents.</p>
 
-keeptabs shows which of your Claude Code and Codex sessions are busy, finished, or waiting on you, and jumps straight to the one you pick: the right Hyprland window, kitty window, tmux pane, and nvim terminal buffer. It works with the terminals and multiplexers you already use instead of asking you to run agents inside something new.
+## 🤖 Overview
 
-## What you get
+keeptabs shows which of your Claude Code and Codex sessions are busy, finished, or waiting on you, and jumps straight to the one you pick.
 
-- **Waybar module**: one icon per state with a count. Busy bobs up and down, waiting pulses, and the module hides when no agents are running.
-- **Picker**: a rofi list of every session with its state, title, project, location, and age. Picking one focuses it, down to the pane and buffer.
-- **Seen tracking**: a finished session you are already looking at, or switch to, drops from done to idle, so done means "finished and not yet seen".
-- **Interrupts**: pressing Esc in an agent marks it done instead of leaving it stuck as busy.
+<p align=center><i>For Hyprland: supports kitty windows, tmux panes, or nvim terminal buffers.</i></p>
+
+## ✨ Features
+
+- **Waybar module**: shows an icon per state with a count: when busy the icon bobs up and down, pulses when waiting on you, and hides automatically when no agents are running.
+- **Jump to an Agent, Anywhere**: a rofi list of every session with its state, title, project, location, and age. Picking one directly focuses the pane/buffer within a window too.
+- **Seen tracking**: statuses update whenever you look at the window, however you get there. So, statuses clear automatically and only new actionable information is displayed.
 
 | State   | Meaning                                        |
 | ------- | ---------------------------------------------- |
@@ -18,13 +31,13 @@ keeptabs shows which of your Claude Code and Codex sessions are busy, finished, 
 | running | working                                        |
 | idle    | started or seen, nothing happening             |
 
-## Requirements
+## 📌 Requirements
 
 - Hyprland, `jq`, `rofi`, and bash 5.1+
 - Waybar for the bar module
 - Optional: tmux (`focus-events on`), kitty (`listen_on`, see below), nvim
 
-## Install
+## 🚀 Install
 
 ```sh
 git clone https://github.com/uhs-robert/keeptabs
@@ -35,7 +48,7 @@ make install            # copies into ~/.local; PREFIX=/usr/local to change
 
 Make sure `~/.local/bin` is on your `PATH`, including for the shells your agents run hooks in.
 
-## Setup
+## 📦 Setup
 
 Every file below is in [`examples/`](examples).
 
@@ -45,18 +58,8 @@ Every file below is in [`examples/`](examples).
 4. **kitty.** If you use kitty, add [`kitty.conf`](examples/kitty.conf) and restart it. All kitty windows share one process, and its remote control socket is how keeptabs tells them apart.
 5. **tmux.** Add [`tmux.conf`](examples/tmux.conf) so tmux reports which client has focus.
 
-## How it works
-
-Each agent calls `keeptabs-hook` on its lifecycle events. The hook writes one small JSON file per session to `$XDG_RUNTIME_DIR/keeptabs/`, with the state, agent process, title, and location (tmux pane, nvim socket). `keeptabs-waybar` and `keeptabs-pick` only read those files.
-
-`keeptabs-waybar` runs one loop per bar that starts no processes on a normal tick. The hook wakes it through a FIFO, so changes show up instantly while the loop sleeps 2 seconds when nothing is animating. The busy animation freezes when the laptop battery is discharging at 20% or below.
-
-## Caveats
+## 🚩 Caveats
 
 - Window focusing is Hyprland only.
-- Claude Code has no hook for Esc during a reply, so keeptabs reads Claude's own session status file in `~/.claude/sessions/`. That file is undocumented and may change between Claude Code releases.
+- Claude Code has no hook for `Esc` during a reply, so keeptabs reads Claude's own session status file in `~/.claude/sessions/`. That file is undocumented and may change between Claude Code releases.
 - The picker and bar colors are fixed in the scripts for now.
-
-## License
-
-[MIT](LICENSE)
