@@ -16,6 +16,8 @@
 
 keeptabs shows which of your Claude Code and Codex sessions are busy, finished, or waiting on you, and jumps straight to the one you pick.
 
+https://github.com/user-attachments/assets/fd34f99f-05ff-4174-b0f9-0d9b328759b1
+
 <p align=center><i>For Hyprland: supports kitty windows, tmux panes, or nvim terminal buffers.</i></p>
 
 ## ✨ Features
