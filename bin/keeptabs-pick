@@ -6,9 +6,9 @@ set -uo pipefail
 
 DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
 
-# shellcheck source=/dev/null
 ROOT="$(readlink -f "${BASH_SOURCE[0]}")"
 ROOT="${ROOT%/bin/*}"
+# shellcheck source=/dev/null
 source "$ROOT/share/keeptabs/lib.sh"
 
 sessions() {
@@ -67,7 +67,9 @@ focus_window() {
     | ([$c[] | select(.title == $title)]
        + [$c[] | select($session != "" and (.title | ascii_downcase | contains($session | ascii_downcase)))]
        + $c)[0].address')"
-  hyprctl dispatch "hl.dsp.focus({ window = 'address:$address' })" >/dev/null
+  # Lua-config Hyprland rejects the classic dispatcher syntax, and classic configs reject Lua.
+  hyprctl dispatch "hl.dsp.focus({ window = 'address:$address' })" >/dev/null 2>&1 ||
+    hyprctl dispatch focuswindow "address:$address" >/dev/null
 }
 
 focus_nvim() {
@@ -114,8 +116,8 @@ for ((i = 0; i < count; i++)); do
   [[ -n "$pane" ]] && where="tmux $(tmux -S "$socket" display -p -t "$pane" '#{session_name}:#{window_index}' 2>/dev/null)"
   [[ -n "$nvim" ]] && where+=" nvim"
   rows+="$(printf '<span color="%s"><b>%-8s</b></span> %s  <span color="%s">%s · %s · %s · %s</span>' \
-    "${COLOR[$state]:-$MUTED}" "${state^^}" "$(escape "${title:-Untitled}")" \
-    "$MUTED" "${agent:-claude}" "$(escape "$(basename "$cwd")")" "$where" "$(age "$since")")"$'\n'
+    "${COLOR[${state:-idle}]:-$MUTED}" "${state^^}" "$(escape "${title:-Untitled}")" \
+    "$MUTED" "${agent:-claude}" "$(escape "$(basename "$cwd")")" "$(escape "$where")" "$(age "$since")")"$'\n'
 done
 
 rofi_args=(-name rofiDmenu -i -dmenu -markup-rows -p Agents -format i)
