@@ -23,7 +23,7 @@ keeptabs shows which of your Claude Code and Codex sessions are busy, finished, 
 ## ✨ Features
 
 - **Waybar module**: shows an icon per state with a count: when busy the icon bobs up and down, pulses when waiting on you, and hides automatically when no agents are running.
-- **Jump to an Agent, Anywhere**: a rofi list of every session with its state, title, project, location, and age. Picking one directly focuses the pane/buffer within a window too.
+- **Jump to an Agent, Anywhere**: a rofi list of every session with its state, title, project, location, and age. Picking one directly focuses the pane/buffer within a window, a lone session skips rofi.
 - **Seen tracking**: statuses update whenever you look at the window, however you get there. So, statuses clear automatically and only new actionable information is displayed.
 
 |                                                         Icon                                                          | State   | Meaning                                        |

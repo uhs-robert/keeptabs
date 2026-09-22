@@ -108,20 +108,25 @@ if ((count == 0)); then
   exit 0
 fi
 
-rows=""
-for ((i = 0; i < count; i++)); do
-  IFS=$'\x1f' read -r id state since cwd socket pane nvim title agent < <(field "$i" id state since cwd tmux_socket tmux_pane nvim title agent)
-  where="terminal"
-  [[ -n "$pane" ]] && where="tmux $(tmux -S "$socket" display -p -t "$pane" '#{session_name}:#{window_index}' 2>/dev/null)"
-  [[ -n "$nvim" ]] && where+=" nvim"
-  rows+="$(printf '<span color="%s"><b>%-8s</b></span> %s  <span color="%s">%s · %s · %s · %s</span>' \
-    "${KT_COLOR[${state:-idle}]:-${KT_COLOR[muted]}}" "${state^^}" "$(escape "${title:-Untitled}")" \
-    "${KT_COLOR[muted]}" "${agent:-claude}" "$(escape "$(basename "$cwd")")" "$(escape "$where")" "$(age "$since")")"$'\n'
-done
+pick() {
+  local rows="" i id state since cwd socket pane nvim title agent where
+  for ((i = 0; i < count; i++)); do
+    IFS=$'\x1f' read -r id state since cwd socket pane nvim title agent < <(field "$i" id state since cwd tmux_socket tmux_pane nvim title agent)
+    where="terminal"
+    [[ -n "$pane" ]] && where="tmux $(tmux -S "$socket" display -p -t "$pane" '#{session_name}:#{window_index}' 2>/dev/null)"
+    [[ -n "$nvim" ]] && where+=" nvim"
+    rows+="$(printf '<span color="%s"><b>%-8s</b></span> %s  <span color="%s">%s · %s · %s · %s</span>' \
+      "${KT_COLOR[${state:-idle}]:-${KT_COLOR[muted]}}" "${state^^}" "$(escape "${title:-Untitled}")" \
+      "${KT_COLOR[muted]}" "${agent:-claude}" "$(escape "$(basename "$cwd")")" "$(escape "$where")" "$(age "$since")")"$'\n'
+  done
+  printf '%s' "$rows" | rofi -name rofiDmenu -i -dmenu -markup-rows -p Agents -format i
+}
 
-rofi_args=(-name rofiDmenu -i -dmenu -markup-rows -p Agents -format i)
-
-index="$(printf '%s' "$rows" | rofi "${rofi_args[@]}")"
+if ((count == 1)); then
+  index=0
+else
+  index="$(pick)"
+fi
 [[ "$index" =~ ^[0-9]+$ ]] || exit 0
 
 IFS=$'\x1f' read -r id state agent_pid socket pane nvim agent < <(field "$index" id state pid tmux_socket tmux_pane nvim agent)
