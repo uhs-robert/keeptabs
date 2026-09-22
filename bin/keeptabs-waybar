@@ -25,7 +25,8 @@ mkfifo "$WAKE"
 exec {wake_fd}<>"$WAKE"
 exec {lock_fd}>"$MARKS/watcher.lock"
 # shellcheck source=/dev/null
-[[ -r "$LIB" ]] && source "$LIB"
+source "$LIB"
+load_config
 
 ids=() pids=() states=() sinces=() names=() titles=() agents=() sockets=() panes=() nvims=()
 
@@ -124,17 +125,17 @@ render() {
     tooltip+="${tooltip:+\\n}${state^^}\\t$name"
   done
 
-  ((wait)) && parts+=("<span color=\\\"#FFA0A0\\\">󱚟 $wait</span>")
-  ((done)) && parts+=("<span color=\\\"#A3E39A\\\">󱜙 $done</span>")
+  ((wait)) && parts+=("<span color=\\\"${KT_COLOR[waiting]}\\\">󱚟 $wait</span>")
+  ((done)) && parts+=("<span color=\\\"${KT_COLOR[done]}\\\">󱜙 $done</span>")
   if ((running)); then
     if low_battery; then frame=0; else animating=1; fi
     # Zero-width struts at both rise extremes keep the line height fixed, so only the icon moves.
     local strut='<span rise=\"-1024\">​</span><span rise=\"1024\">​</span>' icon=󰚩 rise=-1024
     ((frame)) && icon=󱚣 rise=1024
-    parts+=("<span color=\\\"#7FA3C9\\\">$strut<span rise=\\\"$rise\\\">$icon</span> $running</span>")
+    parts+=("<span color=\\\"${KT_COLOR[running]}\\\">$strut<span rise=\\\"$rise\\\">$icon</span> $running</span>")
   fi
 
-  text="󱙺 "
+  text="<span color=\\\"${KT_COLOR[idle]}\\\">󱙺</span> "
   if ((${#parts[@]})); then
     printf -v text '%s  ' "${parts[@]}"
     text="${text%  }"
@@ -144,6 +145,10 @@ render() {
   out="{\"text\":\"$text\",\"class\":\"$class\",\"tooltip\":\"$tooltip\"}"
 }
 
+# Reload colors when the config appears, disappears, or changes.
+config_had=0
+[[ -e "$KEEPTABS_CONFIG" ]] && config_had=1
+
 frame=0
 tick=0
 watcher=0
@@ -151,6 +156,13 @@ last=""
 while true; do
   changed=0
   [[ ! -e "$STAMP" || "$DIR" -nt "$STAMP" ]] && changed=1
+  config_now=0
+  [[ -e "$KEEPTABS_CONFIG" ]] && config_now=1
+  if ((config_now != config_had)) || [[ "$KEEPTABS_CONFIG" -nt "$STAMP" ]]; then
+    config_had=$config_now
+    load_config
+    changed=1
+  fi
   for pid in "${pids[@]}"; do
     [[ -e "/proc/$pid" ]] || changed=1
   done

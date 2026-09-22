@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 # keeptabs: shared helpers for keeptabs-hook, keeptabs-pick, and keeptabs-waybar.
 
+KEEPTABS_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/keeptabs/config.ini"
+declare -gA KT_COLOR
+
+# Apply the [colors] section of the config over the defaults; invalid colors keep the default.
+# Keys and sections are case-insensitive, and a # or ; comment may follow a value.
+load_config() {
+  local line key value section=""
+  KT_COLOR=([waiting]="#FFA0A0" [done]="#A3E39A" [running]="#7FA3C9" [idle]="#717A84" [muted]="#717A84")
+  [[ -r "$KEEPTABS_CONFIG" ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ "$line" =~ ^[[:space:]]*([#\;]|$) ]] && continue
+    if [[ "$line" =~ ^[[:space:]]*\[[[:space:]]*([^]]*[^][:space:]])[[:space:]]*\][[:space:]]*$ ]]; then
+      section="${BASH_REMATCH[1],,}"
+    elif [[ "$section" == colors &&
+      "$line" =~ ^[[:space:]]*([A-Za-z]+)[[:space:]]*=[[:space:]]*(#[0-9A-Fa-f]{6})[[:space:]]*([#\;].*)?$ ]]; then
+      key="${BASH_REMATCH[1],,}" value="${BASH_REMATCH[2]}"
+      [[ -n "${KT_COLOR[$key]+set}" ]] && KT_COLOR[$key]="$value"
+    fi
+  done <"$KEEPTABS_CONFIG"
+}
+
 # Print a pid and each of its parents up to init.
 ancestors() {
   local pid="$1" key value

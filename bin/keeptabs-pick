@@ -99,8 +99,7 @@ age() {
 
 escape() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' <<<"$1"; }
 
-declare -A COLOR=([waiting]="#FFA0A0" [done]="#A3E39A" [running]="#7FA3C9" [idle]="#717A84")
-MUTED="#717A84"
+load_config
 
 data="$(sessions)"
 count="$(jq length <<<"$data")"
@@ -116,8 +115,8 @@ for ((i = 0; i < count; i++)); do
   [[ -n "$pane" ]] && where="tmux $(tmux -S "$socket" display -p -t "$pane" '#{session_name}:#{window_index}' 2>/dev/null)"
   [[ -n "$nvim" ]] && where+=" nvim"
   rows+="$(printf '<span color="%s"><b>%-8s</b></span> %s  <span color="%s">%s · %s · %s · %s</span>' \
-    "${COLOR[${state:-idle}]:-$MUTED}" "${state^^}" "$(escape "${title:-Untitled}")" \
-    "$MUTED" "${agent:-claude}" "$(escape "$(basename "$cwd")")" "$(escape "$where")" "$(age "$since")")"$'\n'
+    "${KT_COLOR[${state:-idle}]:-${KT_COLOR[muted]}}" "${state^^}" "$(escape "${title:-Untitled}")" \
+    "${KT_COLOR[muted]}" "${agent:-claude}" "$(escape "$(basename "$cwd")")" "$(escape "$where")" "$(age "$since")")"$'\n'
 done
 
 rofi_args=(-name rofiDmenu -i -dmenu -markup-rows -p Agents -format i)

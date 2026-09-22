@@ -16,7 +16,7 @@
 
 keeptabs shows which of your Claude Code and Codex sessions are busy, finished, or waiting on you, and jumps straight to the one you pick.
 
-https://github.com/user-attachments/assets/fd34f99f-05ff-4174-b0f9-0d9b328759b1
+<https://github.com/user-attachments/assets/fd34f99f-05ff-4174-b0f9-0d9b328759b1>
 
 <p align=center><i>For Hyprland: supports kitty windows, tmux panes, or nvim terminal buffers.</i></p>
 
@@ -60,8 +60,22 @@ Every file below is in [`examples/`](examples).
 4. **kitty.** If you use kitty, add [`kitty.conf`](examples/kitty.conf) and restart it. All kitty windows share one process, and its remote control socket is how keeptabs tells them apart.
 5. **tmux.** Add [`tmux.conf`](examples/tmux.conf) so tmux reports which client has focus.
 
+## 🎨 Configuration
+
+Colors are optional. Copy [`config.ini`](examples/config.ini) to `~/.config/keeptabs/config.ini` and change any of them:
+
+```ini
+[colors]
+waiting = #FFA0A0
+done    = #A3E39A
+running = #7FA3C9
+idle    = #717A84
+muted   = #717A84
+```
+
+The picker reads it each time it opens, and the Waybar module picks up changes within a couple of seconds. Colors must be `#RRGGBB`; anything else falls back to the default. Keys and section names are case-insensitive, and comments start with `#` or `;`, on their own line or after a value. The module's `.waiting`, `.done`, and similar classes are still there for CSS if you want to style the whole module.
+
 ## 🚩 Caveats
 
 - Window focusing is Hyprland only.
 - Claude Code has no hook for `Esc` during a reply, so keeptabs reads Claude's own session status file in `~/.claude/sessions/`. That file is undocumented and may change between Claude Code releases.
-- The picker and bar colors are fixed in the scripts for now.
