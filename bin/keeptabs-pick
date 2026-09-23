@@ -134,14 +134,15 @@ print_json() {
     echo "[]"
     return
   fi
-  local i cwd socket pane nvim where project
+  local i cwd socket pane nvim agent transcript where project ctx
   local -a items=()
   for ((i = 0; i < count; i++)); do
-    IFS=$'\x1f' read -r cwd socket pane nvim < <(field "$i" cwd tmux_socket tmux_pane nvim)
+    IFS=$'\x1f' read -r cwd socket pane nvim agent transcript < <(field "$i" cwd tmux_socket tmux_pane nvim agent transcript)
     where="$(session_where "$socket" "$pane" "$nvim")"
     project="$(basename "$cwd")"
-    items+=("$(jq -c --argjson i "$i" --arg project "$project" --arg where "$where" \
-      '.[$i] + {project: $project, where: $where}' <<<"$data")")
+    ctx="$(context_of "${agent:-claude}" "$transcript")"
+    items+=("$(jq -c --argjson i "$i" --arg project "$project" --arg where "$where" --argjson ctx "$ctx" \
+      '.[$i] + {project: $project, where: $where} + $ctx' <<<"$data")")
   done
   printf '%s\n' "${items[@]}" | jq -s '.'
 }
