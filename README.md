@@ -113,6 +113,13 @@ muted   = #717A84
 
 The picker reads it each time it opens, and the Waybar module picks up changes within a couple of seconds. Colors must be `#RRGGBB`; anything else falls back to the default. Keys and section names are case-insensitive, and comments start with `#` or `;`, on their own line or after a value. The module's `.waiting`, `.done`, and similar classes are still there for CSS if you want to style the whole module.
 
+## 🔌 Other frontends
+
+`keeptabs-pick` supports two flags for building a picker other than rofi:
+
+- `keeptabs-pick --json` prints the session list as a JSON array, each session's state-file fields plus `project` (its `cwd`'s basename) and `where` (the same location string the rofi row shows).
+- `keeptabs-pick --focus <id>` jumps straight to the session with that `id`, running the same seen hook, tmux, window, and nvim focus steps rofi would.
+
 ## 🚩 Caveats
 
 - Window focusing is Hyprland only.
