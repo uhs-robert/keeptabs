@@ -117,7 +117,7 @@ The picker reads it each time it opens, and the Waybar module picks up changes w
 
 `keeptabs-pick` supports two flags for building a picker other than rofi:
 
-- `keeptabs-pick --json` prints the session list as a JSON array, each session's state-file fields plus `project` (its `cwd`'s basename) and `where` (the same location string the rofi row shows).
+- `keeptabs-pick --json` prints the session list as a JSON array, each session's state-file fields plus `project` (its `cwd`'s basename), `where` (the same location string the rofi row shows), and `context_used`/`context_window`/`context_pct` (tokens used, the model's context window, and the percent used, all `null` until the transcript has usage to report).
 - `keeptabs-pick --focus <id>` jumps straight to the session with that `id`, running the same seen hook, tmux, window, and nvim focus steps rofi would.
 
 ## 🚩 Caveats
