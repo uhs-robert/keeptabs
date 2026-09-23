@@ -40,14 +40,16 @@ context_of() {
   }
   case "$agent" in
   claude)
+    # The largest usage in the tail still marks a 1M session after compaction shrinks it.
     tail -n 400 "$transcript" | tac | jq -nc --argjson claude_window "$KT_CLAUDE_WINDOW" '
-      (first(inputs | select(.type == "assistant" and .message.usage and (.isSidechain | not)))) as $m
-      | if $m == null then {context_used: null, context_window: null, context_pct: null} else
-        ($m.message.usage.input_tokens // 0) + ($m.message.usage.cache_read_input_tokens // 0) +
-          ($m.message.usage.cache_creation_input_tokens // 0) as $used
-        | (if ($m.message.model // "" | endswith("[1m]")) or $used > 200000 then $claude_window else 200000 end) as $window
-        | {context_used: $used, context_window: $window,
-           context_pct: (if $window > 0 then (($used * 100 / $window) | round) else null end)}
+      def used: (.message.usage | (.input_tokens // 0) + (.cache_read_input_tokens // 0)
+        + (.cache_creation_input_tokens // 0) + (.output_tokens // 0));
+      [inputs | select(.type == "assistant" and .message.usage and (.isSidechain | not))] as $msgs
+      | if ($msgs | length) == 0 then {context_used: null, context_window: null, context_pct: null} else
+        ($msgs[0] | used) as $used
+        | (if ($msgs[0].message.model // "" | endswith("[1m]")) or ([$msgs[] | used] | max) > 200000
+            then $claude_window else 200000 end) as $window
+        | {context_used: $used, context_window: $window, context_pct: (($used * 100 / $window) | round)}
         end'
     ;;
   codex)
@@ -55,7 +57,7 @@ context_of() {
       (first(inputs | select(.payload.type == "token_count" and .payload.info))) as $e
       | if $e == null then {context_used: null, context_window: null, context_pct: null} else
         $e.payload.info as $i
-        | ($i.last_token_usage.input_tokens // $i.total_token_usage.input_tokens // null) as $used
+        | ($i.last_token_usage.total_tokens // null) as $used
         | ($i.model_context_window // null) as $window
         | {context_used: $used, context_window: $window,
            context_pct: (if $used != null and $window > 0 then (($used * 100 / $window) | round) else null end)}
