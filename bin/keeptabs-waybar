@@ -2,6 +2,11 @@
 # keeptabs: Waybar module that counts agent sessions by state from keeptabs-hook.
 # Runs continuously; one instance, elected by flock, also marks interrupted sessions done and
 # sessions the user is looking at idle.
+#
+# On a running -> done transition, output gets a "finished" class for a few seconds (class
+# becomes an array, e.g. ["done","finished"]) and a "finished_seq" field that increases by
+# the number of sessions that finished. Consumers just watch finished_seq change; they don't
+# need to diff tooltip/class counts across frames.
 
 DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
 MARKS="${XDG_RUNTIME_DIR:-/tmp}/keeptabs-waybar"
@@ -15,6 +20,7 @@ TICK_BUSY=0.5
 TICK_IDLE=2
 LOW_BATTERY=20
 ELECT_EVERY=20
+FINISHED_HOLD_US=3000000
 
 mkdir -p "$DIR" "$MARKS"
 STAMP="$MARKS/render-$$"
@@ -29,6 +35,9 @@ source "$LIB"
 load_config
 
 ids=() pids=() states=() sinces=() names=() titles=() agents=() sockets=() panes=() nvims=()
+declare -A prev_states=()
+finished_seq=0
+finished_until=0
 
 load() {
   : >"$STAMP"
@@ -48,6 +57,24 @@ load() {
 # Re-run the hook for a session so it records a new state.
 set_state() {
   printf '{"session_id":"%s"}' "${ids[$1]}" | AGENT_PID="${pids[$1]}" "$HOOK" "$2" "${agents[$1]}"
+}
+
+# Bump finished_seq and arm the finished class window for each session that went running -> done
+# since the last load. New ids (unseen in prev_states) never count, so startup is silent.
+detect_finished() {
+  local i id newly=0
+  for i in "${!ids[@]}"; do
+    id="${ids[i]}"
+    [[ "${prev_states[$id]:-}" == running && "${states[i]}" == "done" ]] && ((newly++))
+  done
+  if ((newly)); then
+    finished_seq=$((finished_seq + newly))
+    finished_until=$((${EPOCHREALTIME/./} + FINISHED_HOLD_US))
+  fi
+  prev_states=()
+  for i in "${!ids[@]}"; do
+    prev_states["${ids[i]}"]="${states[i]}"
+  done
 }
 
 # Claude records its own busy/waiting/idle status; idle while we still show busy means interrupted.
@@ -109,9 +136,10 @@ escape_json() {
 
 render() {
   local frame="$1" wait=0 done=0 running=0 i state class text tooltip="" parts=() name
+  local now="${EPOCHREALTIME/./}"
   animating=0
   if ((${#ids[@]} == 0)); then
-    out='{"text":""}'
+    out="{\"text\":\"\",\"finished_seq\":$finished_seq}"
     return
   fi
   for i in "${!ids[@]}"; do
@@ -142,7 +170,9 @@ render() {
   fi
   class=idle
   if ((wait)); then class=waiting; elif ((done)); then class="done"; elif ((running)); then class=running; fi
-  out="{\"text\":\"$text\",\"class\":\"$class\",\"tooltip\":\"$tooltip\"}"
+  local class_json="\"$class\""
+  ((now < finished_until)) && class_json="[\"$class\",\"finished\"]"
+  out="{\"text\":\"$text\",\"class\":$class_json,\"tooltip\":\"$tooltip\",\"finished_seq\":$finished_seq}"
 }
 
 # Reload colors when the config appears, disappears, or changes.
@@ -166,7 +196,10 @@ while true; do
   for pid in "${pids[@]}"; do
     [[ -e "/proc/$pid" ]] || changed=1
   done
-  ((changed)) && load
+  ((changed)) && {
+    load
+    detect_finished
+  }
 
   if ((! watcher && tick % ELECT_EVERY == 0)) && flock -n "$lock_fd"; then
     watcher=1

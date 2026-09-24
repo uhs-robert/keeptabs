@@ -16,8 +16,21 @@
   animation: keeptabs-pulse 1s ease-in-out infinite;
 }
 
+/* Waybar sends class as an array, e.g. ["done", "finished"], for a few seconds after a
+   session goes running -> done, so both rules below apply at once. */
+#custom-keeptabs.finished {
+  animation: keeptabs-finished-pulse 0.6s ease-in-out 3;
+}
+
 @keyframes keeptabs-pulse {
   50% {
     opacity: 0.4;
+  }
+}
+
+/* GTK CSS ignores transform on labels, so the glow comes from text-shadow, not scale. */
+@keyframes keeptabs-finished-pulse {
+  50% {
+    text-shadow: 0 0 6px #a3e39a;
   }
 }
