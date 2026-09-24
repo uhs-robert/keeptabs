@@ -13,24 +13,41 @@
 
 #custom-keeptabs.waiting {
   color: #ffa0a0;
-  animation: keeptabs-pulse 1s ease-in-out infinite;
+  /* Runs the whole time a session waits: mostly idle, with a brief pulse every ~10s. */
+  animation: keeptabs-waiting-nudge 10s ease-in-out infinite;
 }
 
-/* Waybar sends class as an array, e.g. ["done", "finished"], for a few seconds after a
-   session goes running -> done, so both rules below apply at once. */
+/* Waybar sends class as an array, e.g. ["done", "finished"] or ["waiting", "waiting-started"],
+   for a few seconds after a transition, so more than one rule below can apply at once. */
 #custom-keeptabs.finished {
   animation: keeptabs-finished-pulse 0.6s ease-in-out 3;
 }
 
-@keyframes keeptabs-pulse {
-  50% {
-    opacity: 0.4;
-  }
+#custom-keeptabs.waiting-started {
+  animation: keeptabs-waiting-pulse 0.6s ease-in-out 3;
 }
 
 /* GTK CSS ignores transform on labels, so the glow comes from text-shadow, not scale. */
 @keyframes keeptabs-finished-pulse {
   50% {
     text-shadow: 0 0 6px #a3e39a;
+  }
+}
+
+@keyframes keeptabs-waiting-pulse {
+  50% {
+    text-shadow: 0 0 6px #ffa0a0;
+  }
+}
+
+/* Short pulse near the start of the cycle, idle for the rest, so it nudges without strobing. */
+@keyframes keeptabs-waiting-nudge {
+  0%,
+  90%,
+  100% {
+    opacity: 1;
+  }
+  5% {
+    opacity: 0.4;
   }
 }
