@@ -5,7 +5,8 @@
 #
 # On a running -> done transition, output gets a "finished" class for a few seconds (class
 # becomes an array, e.g. ["done","finished"]) and a "finished_seq" field that increases by
-# the number of sessions that finished. Consumers just watch finished_seq change; they don't
+# the number of sessions that finished. A transition into waiting works the same way, with
+# "waiting-started" and "waiting_seq". Consumers just watch the seq fields change; they don't
 # need to diff tooltip/class counts across frames.
 
 DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
@@ -21,6 +22,7 @@ TICK_IDLE=2
 LOW_BATTERY=20
 ELECT_EVERY=20
 FINISHED_HOLD_US=3000000
+WAITING_HOLD_US=3000000
 
 mkdir -p "$DIR" "$MARKS"
 STAMP="$MARKS/render-$$"
@@ -38,6 +40,9 @@ ids=() pids=() states=() sinces=() names=() titles=() agents=() sockets=() panes
 declare -A prev_states=()
 finished_seq=0
 finished_until=0
+waiting_seq=0
+waiting_until=0
+first_load=1
 
 load() {
   : >"$STAMP"
@@ -59,17 +64,28 @@ set_state() {
   printf '{"session_id":"%s"}' "${ids[$1]}" | AGENT_PID="${pids[$1]}" "$HOOK" "$2" "${agents[$1]}"
 }
 
-# Bump finished_seq and arm the finished class window for each session that went running -> done
-# since the last load. New ids (unseen in prev_states) never count, so startup is silent.
+# Bump finished_seq/waiting_seq and arm their transient class windows for sessions that went
+# running -> done or into waiting since the last load. New ids never count toward finished
+# (no prior running state); on the very first load nothing counts toward either, so startup
+# is silent even for sessions that start out waiting.
 detect_finished() {
-  local i id newly=0
+  local i id state now_us newly_finished=0 newly_waiting=0
+  now_us="${EPOCHREALTIME/./}"
   for i in "${!ids[@]}"; do
     id="${ids[i]}"
-    [[ "${prev_states[$id]:-}" == running && "${states[i]}" == "done" ]] && ((newly++))
+    state="${prev_states[$id]:-}"
+    [[ "$state" == running && "${states[i]}" == "done" ]] && ((newly_finished++))
+    ((first_load)) && continue
+    [[ "$state" != waiting && "${states[i]}" == "waiting" ]] && ((newly_waiting++))
   done
-  if ((newly)); then
-    finished_seq=$((finished_seq + newly))
-    finished_until=$((${EPOCHREALTIME/./} + FINISHED_HOLD_US))
+  first_load=0
+  if ((newly_finished)); then
+    finished_seq=$((finished_seq + newly_finished))
+    finished_until=$((now_us + FINISHED_HOLD_US))
+  fi
+  if ((newly_waiting)); then
+    waiting_seq=$((waiting_seq + newly_waiting))
+    waiting_until=$((now_us + WAITING_HOLD_US))
   fi
   prev_states=()
   for i in "${!ids[@]}"; do
@@ -139,7 +155,7 @@ render() {
   local now="${EPOCHREALTIME/./}"
   animating=0
   if ((${#ids[@]} == 0)); then
-    out="{\"text\":\"\",\"finished_seq\":$finished_seq}"
+    out="{\"text\":\"\",\"finished_seq\":$finished_seq,\"waiting_seq\":$waiting_seq}"
     return
   fi
   for i in "${!ids[@]}"; do
@@ -170,9 +186,15 @@ render() {
   fi
   class=idle
   if ((wait)); then class=waiting; elif ((done)); then class="done"; elif ((running)); then class=running; fi
-  local class_json="\"$class\""
-  ((now < finished_until)) && class_json="[\"$class\",\"finished\"]"
-  out="{\"text\":\"$text\",\"class\":$class_json,\"tooltip\":\"$tooltip\",\"finished_seq\":$finished_seq}"
+  local class_json="\"$class\"" extra=()
+  ((now < finished_until)) && extra+=("finished")
+  ((now < waiting_until)) && extra+=("waiting-started")
+  if ((${#extra[@]})); then
+    local extra_json
+    printf -v extra_json '"%s",' "${extra[@]}"
+    class_json="[\"$class\",${extra_json%,}]"
+  fi
+  out="{\"text\":\"$text\",\"class\":$class_json,\"tooltip\":\"$tooltip\",\"finished_seq\":$finished_seq,\"waiting_seq\":$waiting_seq}"
 }
 
 # Reload colors when the config appears, disappears, or changes.
