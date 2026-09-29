@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# keeptabs: shared helpers for keeptabs-hook, keeptabs-pick, and keeptabs-waybar.
+# keeptabs: shared helpers for keeptabs-hook, keeptabs-pick, and keeptabs-status.
 
 KEEPTABS_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/keeptabs/config.ini"
 declare -gA KT_COLOR
