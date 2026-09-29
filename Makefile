@@ -1,7 +1,7 @@
 PREFIX ?= $(HOME)/.local
 BINDIR := $(PREFIX)/bin
 SHAREDIR := $(PREFIX)/share/keeptabs
-BINS := keeptabs-hook keeptabs-pick keeptabs-waybar
+BINS := keeptabs-hook keeptabs-pick keeptabs-status
 
 .PHONY: install link uninstall check
 

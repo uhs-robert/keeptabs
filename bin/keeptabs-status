@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# keeptabs: Waybar module that counts agent sessions by state from keeptabs-hook.
+# keeptabs: status line (Waybar JSON) that counts agent sessions by state from keeptabs-hook.
 # Runs continuously; one instance, elected by flock, also marks interrupted sessions done and
 # sessions the user is looking at idle.
 #
@@ -10,7 +10,7 @@
 # need to diff tooltip/class counts across frames.
 
 DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
-MARKS="${XDG_RUNTIME_DIR:-/tmp}/keeptabs-waybar"
+MARKS="${XDG_RUNTIME_DIR:-/tmp}/keeptabs-status"
 ROOT="$(readlink -f "${BASH_SOURCE[0]}")"
 ROOT="${ROOT%/bin/*}"
 HOOK="$ROOT/bin/keeptabs-hook"

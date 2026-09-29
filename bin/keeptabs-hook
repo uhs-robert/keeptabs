@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# keeptabs: record an agent session's state and location for keeptabs-pick and keeptabs-waybar.
+# keeptabs: record an agent session's state and location for keeptabs-pick and keeptabs-status.
 # Usage: keeptabs-hook <idle|running|waiting|done|tool-failure|end> [agent]
 
 state="$1"
@@ -19,7 +19,7 @@ file="$dir/$id.json"
 # Wake the Waybar loops so they redraw now; a read-write open never blocks on a FIFO.
 wake_waybar() {
   local fifo
-  for fifo in "${XDG_RUNTIME_DIR:-/tmp}"/keeptabs-waybar/wake-*; do
+  for fifo in "${XDG_RUNTIME_DIR:-/tmp}"/keeptabs-status/wake-*; do
     [[ -p "$fifo" ]] && printf '\n' 1<>"$fifo"
   done
 }
