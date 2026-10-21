@@ -3,7 +3,7 @@ BINDIR := $(PREFIX)/bin
 SHAREDIR := $(PREFIX)/share/keeptabs
 BINS := keeptabs-hook keeptabs-pick keeptabs-status
 
-.PHONY: install link uninstall check
+.PHONY: install link uninstall check test
 
 install:
 	install -Dm755 -t $(BINDIR) $(addprefix bin/,$(BINS))
@@ -22,3 +22,6 @@ uninstall:
 check:
 	shellcheck bin/* share/keeptabs/lib.sh
 	shfmt -i 2 -d bin share
+
+test:
+	test/keeptabs-hook.test.sh
