@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# keeptabs: record an agent session's state and location for keeptabs-pick and keeptabs-status.
+# keeptabs: record an agent session's state and location for keeptabs-pick, keeptabs-status, and tmux.
 # Usage: keeptabs-hook <idle|running|waiting|done|tool-failure|end> [agent]
 
 state="$1"
@@ -43,8 +43,19 @@ title_of() {
   esac
 }
 
+# Restyle the windows on the session's tmux server.
+push_tmux() {
+  [[ -n "$1" && -r "$lib" ]] || return 0
+  # shellcheck source=/dev/null
+  declare -F tmux_push >/dev/null || source "$lib"
+  tmux_push "$dir" "$1"
+}
+
 if [[ "$state" == end ]]; then
+  ended_socket=""
+  [[ "$(cat "$file" 2>/dev/null)" =~ \"tmux_socket\":\ *\"([^\"]*)\" ]] && ended_socket="${BASH_REMATCH[1]}"
   rm -f "$file"
+  push_tmux "$ended_socket"
   wake_waybar
   exit 0
 fi
@@ -96,6 +107,7 @@ jq -n --arg id "$id" --arg agent "$agent" --arg state "$state" --argjson pid "${
     cwd: ($ENV.CLAUDE_PROJECT_DIR // $input.cwd // $old.cwd), transcript: $transcript,
     tmux_socket: $tmux, tmux_pane: $pane, nvim: $nvim}' \
   >"$file.tmp" && mv "$file.tmp" "$file"
+push_tmux "$tmux_socket"
 wake_waybar
 
 exit 0
