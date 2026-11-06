@@ -126,7 +126,7 @@ The picker reads it each time it opens, and the Waybar module picks up changes w
 The hook also writes each session's state into tmux, so a tmux theme can style the windows that hold agents. Two options carry it:
 
 - `@keeptabs_state` (window option): `waiting`, `done`, `running`, or `idle`, the most urgent state (in that order) of the live sessions with a pane in that window. It is unset when the window has no live session. Only sessions on the same tmux server count.
-- `@keeptabs_frame` (global option): `0` or `1`. It flips about once a second while any session on that server is running, so a theme can animate a busy window.
+- `@keeptabs_frame` (global option): `0` or `1`. It flips about once a second while any session on that server is running or done, so a theme can animate those windows. With no running or done session, it keeps its last value.
 
 The hook updates `@keeptabs_state` on every state change. Ticks of `keeptabs-status --once` flip `@keeptabs_frame`, so run it from your status line:
 
