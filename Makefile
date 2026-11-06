@@ -1,7 +1,7 @@
 PREFIX ?= $(HOME)/.local
 BINDIR := $(PREFIX)/bin
 SHAREDIR := $(PREFIX)/share/keeptabs
-BINS := keeptabs-hook keeptabs-pick keeptabs-status
+BINS := keeptabs-hook keeptabs-pick keeptabs-status keeptabs-tmux
 
 .PHONY: install link uninstall check test
 
@@ -26,3 +26,4 @@ check:
 test:
 	test/keeptabs-hook.test.sh
 	test/keeptabs-tmux.test.sh
+	test/keeptabs-tmux-next.test.sh

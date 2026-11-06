@@ -95,6 +95,18 @@ err="$(PATH="$broken_bin:$PATH" hook a "$pid_a" waiting PreToolUse 2>&1)"
 check "a tmux error leaves the hook silent" "" "$err"
 check "a tmux error still records the state" waiting "$(jq -r .state "$XDG_RUNTIME_DIR/keeptabs/a.json")"
 
+# frame_after <state>: record state for session a, then run a tick that is due to flip.
+frame_after() {
+  hook a "$pid_a" "$1" PreToolUse
+  tmux_test set -g @keeptabs_frame 1
+  echo "1 0" >"$frame_file"
+  once
+  tmux_test show -gv @keeptabs_frame
+}
+check "--once leaves the frame alone with only waiting" 1 "$(frame_after waiting)"
+check "--once leaves the frame alone with only idle" 1 "$(frame_after idle)"
+check "--once flips the frame with only done" 0 "$(frame_after "done")"
+
 start="${EPOCHREALTIME/./}"
 for _ in {1..20}; do once; done
 echo "info --once takes $((("${EPOCHREALTIME/./}" - start) / 20000)) ms"

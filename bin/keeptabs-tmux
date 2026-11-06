@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# keeptabs: tmux key binding commands.
+# Usage: keeptabs-tmux next
+#
+# next: go to the pane of the agent on this tmux server that needs you most: waiting before
+# done, oldest first. Repeated presses walk the list in that order and wrap around.
+
+DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
+MARKS="${XDG_RUNTIME_DIR:-/tmp}/keeptabs-status"
+
+# Print "rank since pane_number pane_id" for each live waiting or done session on tmux
+# server $1, most urgent first.
+needy_panes() {
+  local socket="$1" file content pid comm live rank
+  local socket_re='"tmux_socket": *"([^"]*)"' pane_re='"tmux_pane": *"%([0-9]+)"'
+  local state_re='"state": *"([a-z]+)"' pid_re='"pid": *([0-9]+)' comm_re='"comm": *"([^"]*)"'
+  local since_re='"since": *([0-9]+)' pane since
+  local -A ranks=([waiting]=0 [done]=1)
+  for file in "$DIR"/*.json; do
+    content=""
+    read -rd "" content 2>/dev/null <"$file"
+    [[ "$content" =~ $socket_re && "${BASH_REMATCH[1]}" == "$socket" ]] || continue
+    [[ "$content" =~ $state_re ]] || continue
+    rank="${ranks[${BASH_REMATCH[1]}]:-}"
+    [[ -n "$rank" ]] || continue
+    [[ "$content" =~ $pane_re ]] || continue
+    pane="${BASH_REMATCH[1]}"
+    [[ "$content" =~ $pid_re ]] || continue
+    pid="${BASH_REMATCH[1]}"
+    comm=claude
+    [[ "$content" =~ $comm_re && -n "${BASH_REMATCH[1]}" ]] && comm="${BASH_REMATCH[1]}"
+    live=""
+    read -r live 2>/dev/null <"/proc/$pid/comm"
+    [[ "$live" == "$comm" ]] || continue
+    since=0
+    [[ "$content" =~ $since_re ]] && since="${BASH_REMATCH[1]}"
+    echo "$rank $since $pane %$pane"
+  done | sort -n -k1,1 -k2,2 -k3,3
+}
+
+# True when key "$1" (rank since pane_number) sorts after key "$2".
+key_after() {
+  local a b
+  read -ra a <<<"$1"
+  read -ra b <<<"$2"
+  if ((a[0] != b[0])); then
+    ((a[0] > b[0]))
+  elif ((a[1] != b[1])); then
+    ((a[1] > b[1]))
+  else
+    ((a[2] > b[2]))
+  fi
+}
+
+next() {
+  local socket="${TMUX%%,*}" current client cursor_file cursor="" line key pane
+  local first="" target="" target_key="" session window client_args=()
+  [[ -n "$socket" ]] || return 0
+  read -r current client < <(tmux display -p '#{pane_id} #{client_name}')
+  [[ -n "$client" ]] && client_args=(-c "$client")
+  cursor_file="$MARKS/next-${socket//\//_}"
+
+  local -a matches=()
+  local -A seen=()
+  while read -r line; do
+    pane="${line##* }"
+    [[ -n "${seen[$pane]:-}" ]] && continue
+    seen[$pane]=1
+    matches+=("$line")
+  done < <(needy_panes "$socket")
+
+  # The pane you are in marks where the walk stands. A done agent turns idle once seen and
+  # drops out of the list, so the last jump's key stands in for it.
+  for line in "${matches[@]}"; do
+    [[ "${line##* }" == "$current" ]] && cursor="${line% *}"
+  done
+  if [[ -z "$cursor" && -r "$cursor_file" ]]; then
+    read -r line <"$cursor_file"
+    [[ "${line##* }" == "$current" ]] && cursor="${line% *}"
+  fi
+
+  for line in "${matches[@]}"; do
+    pane="${line##* }"
+    key="${line% *}"
+    [[ "$pane" == "$current" ]] && continue
+    [[ -z "$first" ]] && first="$line"
+    if [[ -n "$cursor" ]] && key_after "$key" "$cursor"; then
+      target="$line"
+      break
+    fi
+  done
+  [[ -z "$target" ]] && target="$first"
+
+  if [[ -z "$target" ]]; then
+    tmux display-message "${client_args[@]}" "No agent needs you"
+    return 0
+  fi
+  pane="${target##* }"
+  target_key="${target% *}"
+  read -r session window < <(tmux display -p -t "$pane" '#{session_id} #{window_id}')
+  [[ -n "$window" ]] || return 0
+  mkdir -p "$MARKS"
+  echo "$target_key $pane" >"$cursor_file"
+  tmux switch-client "${client_args[@]}" -t "$session" \; \
+    select-window -t "$window" \; select-pane -t "$pane"
+}
+
+case "${1:-}" in
+next)
+  # run-shell shows any output, or a non-zero exit, over the pane.
+  exec >/dev/null 2>&1
+  next
+  exit 0
+  ;;
+*)
+  echo "usage: keeptabs-tmux next" >&2
+  exit 2
+  ;;
+esac

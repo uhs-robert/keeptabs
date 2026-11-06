@@ -142,16 +142,16 @@ read_pane_states() {
 
 # Set @keeptabs_state on every window of tmux server $2 to the most urgent state of the live
 # sessions in it (state dir $1), and unset it on windows without one. With $3 set to a frame
-# file, also flip the global @keeptabs_frame while any session there is running, and with $4
+# file, also flip the global @keeptabs_frame while any session there is running or done, and with $4
 # set to frame-only, do nothing else. Every failure is silent: callers include the agent hooks.
 tmux_push() {
   local dir="$1" socket="$2" frame_file="${3:-}" frame_only="${4:-}"
   [[ -n "$socket" && -S "$socket" ]] || return 0
   local -A rank=([idle]=1 [running]=2 [done]=3 [waiting]=4) pane_state=() want=() have=()
-  local pane state window current listing running=0 commands=() frame last_frame last_us now_us
+  local pane state window current listing animated=0 commands=() frame last_frame last_us now_us
   read_pane_states "$dir" "$socket"
   for state in "${pane_state[@]}"; do
-    [[ "$state" == running ]] && running=1
+    [[ "$state" == running || "$state" == "done" ]] && animated=1
   done
   if [[ "$frame_only" != frame-only ]]; then
     listing="$(tmux -S "$socket" list-panes -a -F '#{pane_id} #{window_id} #{@keeptabs_state}' 2>/dev/null)" ||
@@ -175,7 +175,7 @@ tmux_push() {
   done
   # tmux runs status jobs per client, so the frame flips at most twice a second however
   # many clients call this.
-  if [[ -n "$frame_file" ]] && ((running)); then
+  if [[ -n "$frame_file" ]] && ((animated)); then
     now_us="${EPOCHREALTIME/./}"
     last_frame=0 last_us=0
     read -r last_frame last_us 2>/dev/null <"$frame_file"

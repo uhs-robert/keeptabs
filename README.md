@@ -126,7 +126,7 @@ The picker reads it each time it opens, and the Waybar module picks up changes w
 The hook also writes each session's state into tmux, so a tmux theme can style the windows that hold agents. Two options carry it:
 
 - `@keeptabs_state` (window option): `waiting`, `done`, `running`, or `idle`, the most urgent state (in that order) of the live sessions with a pane in that window. It is unset when the window has no live session. Only sessions on the same tmux server count.
-- `@keeptabs_frame` (global option): `0` or `1`. It flips about once a second while any session on that server is running, so a theme can animate a busy window.
+- `@keeptabs_frame` (global option): `0` or `1`. It flips about once a second while any session on that server is running or done, so a theme can animate those windows. With no running or done session, it keeps its last value.
 
 The hook updates `@keeptabs_state` on every state change. Ticks of `keeptabs-status --once` flip `@keeptabs_frame`, so run it from your status line:
 
@@ -136,6 +136,14 @@ set -ga status-right '#(keeptabs-status --once)'
 ```
 
 `keeptabs-status --once` prints nothing and returns in a few milliseconds. When no other `keeptabs-status` is running, each tick also does the watcher's work: it marks interrupted sessions done, marks the session you are looking at seen, and clears windows whose agent exited without ending its session. While a continuous `keeptabs-status` runs (the Waybar module or another bar), that instance does this and `--once` only flips the frame. Read the options in formats, for example `#{?#{==:#{@keeptabs_state},waiting},#[fg=red],}` in `window-status-format`.
+
+### Jump to the agent that needs you
+
+`keeptabs-tmux next` goes to the pane of the agent on the current tmux server that needs you most. It picks agents waiting on you before finished ones, and the oldest first within each. Press it again to walk through the rest in the same order. It skips the pane you are already in, and shows "No agent needs you" when there is nothing to go to. It needs only bash and tmux, so it works on a headless server:
+
+```tmux
+bind-key a run-shell -b 'keeptabs-tmux next'
+```
 
 ## 🚩 Caveats
 
