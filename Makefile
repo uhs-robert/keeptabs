@@ -25,3 +25,4 @@ check:
 
 test:
 	test/keeptabs-hook.test.sh
+	test/keeptabs-tmux.test.sh

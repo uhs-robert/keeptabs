@@ -121,6 +121,22 @@ The picker reads it each time it opens, and the Waybar module picks up changes w
 - `keeptabs-pick --focus <id>` jumps straight to the session with that `id`, running the same seen hook, tmux, window, and nvim focus steps rofi would.
 - `keeptabs-status` prints one Waybar JSON line per frame. Besides `text`, `class`, and `tooltip`, it emits a `finished_seq` field: a counter that goes up by the number of sessions that just went from running to done. A frontend other than Waybar can watch for it changing instead of diffing tooltip counts. For a few seconds after that transition, `class` also becomes an array with `finished` added (e.g. `["done", "finished"]`) so Waybar CSS can animate the change; see `.finished` in [`waybar-style.css`](examples/waybar-style.css). A `waiting_seq` field works the same way for sessions that just started waiting on you, pairing with a transient `waiting-started` class entry (e.g. `["waiting", "waiting-started"]`, or `["waiting", "finished", "waiting-started"]` if both fire at once); see `.waiting-started` and `.waiting` in [`waybar-style.css`](examples/waybar-style.css).
 
+## 🪟 tmux status lines
+
+The hook also writes each session's state into tmux, so a tmux theme can style the windows that hold agents. Two options carry it:
+
+- `@keeptabs_state` (window option): `waiting`, `done`, `running`, or `idle`, the most urgent state (in that order) of the live sessions with a pane in that window. It is unset when the window has no live session. Only sessions on the same tmux server count.
+- `@keeptabs_frame` (global option): `0` or `1`. It flips about once a second while any session on that server is running, so a theme can animate a busy window.
+
+The hook updates `@keeptabs_state` on every state change. Ticks of `keeptabs-status --once` flip `@keeptabs_frame`, so run it from your status line:
+
+```tmux
+set -g status-interval 1
+set -ga status-right '#(keeptabs-status --once)'
+```
+
+`keeptabs-status --once` prints nothing and returns in a few milliseconds. When no other `keeptabs-status` is running, each tick also does the watcher's work: it marks interrupted sessions done, marks the session you are looking at seen, and clears windows whose agent exited without ending its session. While a continuous `keeptabs-status` runs (the Waybar module or another bar), that instance does this and `--once` only flips the frame. Read the options in formats, for example `#{?#{==:#{@keeptabs_state},waiting},#[fg=red],}` in `window-status-format`.
+
 ## 🚩 Caveats
 
 - Window focusing is Hyprland only.

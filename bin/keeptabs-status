@@ -8,6 +8,8 @@
 # the number of sessions that finished. A transition into waiting works the same way, with
 # "waiting-started" and "waiting_seq". Consumers just watch the seq fields change; they don't
 # need to diff tooltip/class counts across frames.
+#
+# With --once, runs a single watcher tick for a tmux status line instead: see tmux_once.
 
 DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
 MARKS="${XDG_RUNTIME_DIR:-/tmp}/keeptabs-status"
@@ -26,11 +28,6 @@ WAITING_HOLD_US=3000000
 
 mkdir -p "$DIR" "$MARKS"
 STAMP="$MARKS/render-$$"
-# The hook writes a byte here after each state change, cutting the sleep short.
-WAKE="$MARKS/wake-$$"
-trap 'rm -f "$STAMP" "$WAKE"' EXIT
-mkfifo "$WAKE"
-exec {wake_fd}<>"$WAKE"
 exec {lock_fd}>"$MARKS/watcher.lock"
 # shellcheck source=/dev/null
 source "$LIB"
@@ -51,7 +48,7 @@ load() {
   local id pid state since cwd title agent comm socket pane nvim live
   while IFS=$'\x1f' read -r id pid state since cwd title agent comm socket pane nvim; do
     live=""
-    read -r live <"/proc/$pid/comm" 2>/dev/null
+    read -r live 2>/dev/null <"/proc/$pid/comm"
     [[ "$live" == "${comm:-claude}" ]] || continue
     ids+=("$id") pids+=("$pid") states+=("$state") sinces+=("$since") names+=("${cwd##*/}")
     titles+=("$title") agents+=("${agent:-claude}") sockets+=("$socket") panes+=("$pane") nvims+=("$nvim")
@@ -197,6 +194,51 @@ render() {
   out="{\"text\":\"$text\",\"class\":$class_json,\"tooltip\":\"$tooltip\",\"finished_seq\":$finished_seq,\"waiting_seq\":$waiting_seq}"
 }
 
+# Push the @keeptabs_state window option to each tmux server given, except $TMUX's when
+# $1 is --skip-own.
+push_tmux_all() {
+  local socket
+  local -A pushed=()
+  if [[ "$1" == --skip-own ]]; then
+    shift
+    [[ -n "${TMUX:-}" ]] && pushed[${TMUX%%,*}]=1
+  fi
+  for socket in "$@"; do
+    [[ -z "$socket" || -n "${pushed[$socket]:-}" ]] && continue
+    pushed[$socket]=1
+    tmux_push "$DIR" "$socket"
+  done
+}
+
+# One watcher tick for a tmux #() job, which runs every status-interval per client: never
+# sleep, print nothing. While another instance holds the watcher lock, it owns the
+# transitions, so only animate this server's frame.
+tmux_once() {
+  local socket="${TMUX%%,*}" frame_file
+  frame_file="$MARKS/frame-${socket//\//_}"
+  if ! flock -n "$lock_fd"; then
+    tmux_push "$DIR" "$socket" "$frame_file" frame-only
+    return
+  fi
+  STAMP=/dev/null
+  load
+  watch_interrupts
+  watch_focus
+  push_tmux_all --skip-own "${sockets[@]}"
+  tmux_push "$DIR" "$socket" "$frame_file"
+}
+
+if [[ "${1:-}" == --once ]]; then
+  tmux_once
+  exit 0
+fi
+
+# The hook writes a byte here after each state change, cutting the sleep short.
+WAKE="$MARKS/wake-$$"
+trap 'rm -f "$STAMP" "$WAKE"' EXIT
+mkfifo "$WAKE"
+exec {wake_fd}<>"$WAKE"
+
 # Reload colors when the config appears, disappears, or changes.
 config_had=0
 [[ -e "$KEEPTABS_CONFIG" ]] && config_had=1
@@ -215,8 +257,11 @@ while true; do
     load_config
     changed=1
   fi
-  for pid in "${pids[@]}"; do
-    [[ -e "/proc/$pid" ]] || changed=1
+  dead_sockets=()
+  for i in "${!pids[@]}"; do
+    [[ -e "/proc/${pids[i]}" ]] && continue
+    changed=1
+    dead_sockets+=("${sockets[i]}")
   done
   ((changed)) && {
     load
@@ -225,8 +270,12 @@ while true; do
 
   if ((! watcher && tick % ELECT_EVERY == 0)) && flock -n "$lock_fd"; then
     watcher=1
+    push_tmux_all "${sockets[@]}"
   fi
   if ((watcher)); then
+    # The hook pushes tmux window states on every change it records, but a session that
+    # dies without SessionEnd never runs it.
+    ((${#dead_sockets[@]})) && push_tmux_all "${dead_sockets[@]}"
     watch_interrupts
     watch_focus
   fi
