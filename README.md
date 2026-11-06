@@ -137,6 +137,14 @@ set -ga status-right '#(keeptabs-status --once)'
 
 `keeptabs-status --once` prints nothing and returns in a few milliseconds. When no other `keeptabs-status` is running, each tick also does the watcher's work: it marks interrupted sessions done, marks the session you are looking at seen, and clears windows whose agent exited without ending its session. While a continuous `keeptabs-status` runs (the Waybar module or another bar), that instance does this and `--once` only flips the frame. Read the options in formats, for example `#{?#{==:#{@keeptabs_state},waiting},#[fg=red],}` in `window-status-format`.
 
+### Jump to the agent that needs you
+
+`keeptabs-tmux next` goes to the pane of the agent on the current tmux server that needs you most. It picks agents waiting on you before finished ones, and the oldest first within each. Press it again to walk through the rest in the same order. It skips the pane you are already in, and shows "No agent needs you" when there is nothing to go to. It needs only bash and tmux, so it works on a headless server:
+
+```tmux
+bind-key a run-shell -b 'keeptabs-tmux next'
+```
+
 ## 🚩 Caveats
 
 - Window focusing is Hyprland only.
