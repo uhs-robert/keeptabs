@@ -142,8 +142,9 @@ read_pane_states() {
 
 # Set @keeptabs_state on every window of tmux server $2 to the most urgent state of the live
 # sessions in it (state dir $1), and unset it on windows without one. With $3 set to a frame
-# file, also flip the global @keeptabs_frame while any session there is running, done or waiting, and with $4
-# set to frame-only, do nothing else. Every failure is silent: callers include the agent hooks.
+# file, also flip the global @keeptabs_frame while any session there is running, done or waiting,
+# and with $4 set to frame-only, do nothing else. Every failure is silent: callers include the
+# agent hooks.
 tmux_push() {
   local dir="$1" socket="$2" frame_file="${3:-}" frame_only="${4:-}"
   [[ -n "$socket" && -S "$socket" ]] || return 0
