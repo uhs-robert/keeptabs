@@ -103,7 +103,7 @@ frame_after() {
   once
   tmux_test show -gv @keeptabs_frame
 }
-check "--once leaves the frame alone with only waiting" 1 "$(frame_after waiting)"
+check "--once flips the frame with only waiting" 0 "$(frame_after waiting)"
 check "--once leaves the frame alone with only idle" 1 "$(frame_after idle)"
 check "--once flips the frame with only done" 0 "$(frame_after "done")"
 
